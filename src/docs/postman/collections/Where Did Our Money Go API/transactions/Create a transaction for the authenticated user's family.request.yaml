@@ -1,0 +1,21 @@
+$kind: http-request
+url: "{{baseUrl}}/transactions"
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "title": "Supermercado",
+      "amount": 42.9,
+      "category": "alimentação",
+      "date": "2026-05-02T12:00:00.000Z"
+    }
+auth:
+  type: bearer
+  credentials:
+    token: "{{bearerToken}}"
+examples: ./.resources/Create a transaction for the authenticated user's family.resources/examples
+order: 4000

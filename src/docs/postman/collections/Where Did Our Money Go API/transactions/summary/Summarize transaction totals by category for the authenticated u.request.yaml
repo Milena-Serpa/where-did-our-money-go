@@ -1,0 +1,12 @@
+$kind: http-request
+name: Summarize transaction totals by category for the authenticated user's family
+url: "{{baseUrl}}/transactions/summary"
+method: GET
+headers:
+  Accept: application/json
+auth:
+  type: bearer
+  credentials:
+    token: "{{bearerToken}}"
+examples: ./.resources/Summarize transaction totals by category for the authenticated u.resources/examples
+order: 1000

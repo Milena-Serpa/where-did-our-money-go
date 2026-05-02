@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/transactions/:id"
+method: DELETE
+pathVariables:
+  id: string
+auth:
+  type: bearer
+  credentials:
+    token: "{{bearerToken}}"
+examples: ./.resources/Delete a transaction from the authenticated user's family.resources/examples
+order: 1000
