@@ -1,2 +1,81 @@
-# where-did-our-money-go
-Full-stack application for simple control of personal expenses with quick registration, fixed categories, and a shared view for couples.
+# Where Did Our Money Go API
+
+REST API for a shared personal expense tracking application. This initial structure provides Express, MongoDB with mongoose, JWT authentication, Swagger documentation, and a layered architecture ready for future user stories.
+
+## Tech Stack
+
+- Node.js
+- Express
+- MongoDB
+- mongoose
+- JWT
+- bcrypt
+- Swagger/OpenAPI
+
+## Project Structure
+
+```text
+src/
+  config/
+  controllers/
+  docs/
+  middlewares/
+  models/
+  routes/
+  services/
+  app.js
+  server.js
+```
+
+## Environment
+
+Create a local `.env` file based on `.env.example`.
+
+```bash
+PORT=3000
+BASE_URL=http://localhost:3000
+MONGODB_URI=mongodb://localhost:27017/where-did-our-money-go
+JWT_SECRET=change-me-in-local-env
+JWT_EXPIRES_IN=1d
+```
+
+## Installation
+
+```bash
+npm install
+```
+
+## Running The API
+
+Static start:
+
+```bash
+npm start
+```
+
+Development start with automatic restart on file changes:
+
+```bash
+npm run dev
+```
+
+## Available Endpoints
+
+- `GET /health`
+- `POST /auth/register`
+- `POST /auth/login`
+- `GET /api-docs`
+
+## Swagger
+
+The OpenAPI specification lives at `src/docs/swagger.yaml`.
+
+When the API is running, Swagger UI is available at:
+
+```text
+http://localhost:3000/api-docs
+```
+
+## Notes For Deployment
+
+This project is prepared to evolve toward GitHub Actions CI and Vercel deployment. Environment variables should be configured in the deployment platform rather than committed to the repository.

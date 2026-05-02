@@ -1,0 +1,144 @@
+openapi: 3.0.3
+info:
+  title: Where Did Our Money Go API
+  version: 0.1.0
+  description: REST API for shared personal expense tracking.
+servers:
+  - url: http://localhost:3000
+    description: Local development
+tags:
+  - name: Health
+  - name: Auth
+paths:
+  /health:
+    get:
+      tags:
+        - Health
+      summary: Check API health
+      responses:
+        "200":
+          description: API is running
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+  /auth/register:
+    post:
+      tags:
+        - Auth
+      summary: Register a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RegisterRequest"
+      responses:
+        "201":
+          description: User registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Missing required fields
+        "409":
+          description: Email already registered
+  /auth/login:
+    post:
+      tags:
+        - Auth
+      summary: Login a user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoginRequest"
+      responses:
+        "200":
+          description: User authenticated
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
+          description: Missing required fields
+        "401":
+          description: Invalid credentials
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    HealthResponse:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+        service:
+          type: string
+          example: where-did-our-money-go-api
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+        - familyId
+      properties:
+        name:
+          type: string
+          example: Milena
+        email:
+          type: string
+          format: email
+          example: milena@example.com
+        password:
+          type: string
+          format: password
+          example: strong-password
+        familyId:
+          type: string
+          example: family-main
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: milena@example.com
+        password:
+          type: string
+          format: password
+          example: strong-password
+    AuthUser:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 66a000000000000000000001
+        name:
+          type: string
+          example: Milena
+        email:
+          type: string
+          format: email
+          example: milena@example.com
+        familyId:
+          type: string
+          example: family-main
+    AuthResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        user:
+          $ref: "#/components/schemas/AuthUser"
