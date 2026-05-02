@@ -1,0 +1,4 @@
+name: New Environment
+values:
+  - key: baseUrl
+    value: 'https://where-did-our-money-go.vercel.app/'

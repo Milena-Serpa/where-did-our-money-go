@@ -1,0 +1,5 @@
+$kind: collection
+name: Where Did Our Money Go API
+description: REST API for shared personal expense tracking.
+variables:
+  baseUrl: ""
