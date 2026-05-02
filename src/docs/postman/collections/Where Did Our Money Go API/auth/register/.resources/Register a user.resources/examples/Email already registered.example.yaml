@@ -1,0 +1,22 @@
+$kind: http-example
+request:
+  url: "{{baseUrl}}/auth/register"
+  method: POST
+  headers:
+    Content-Type: application/json
+  body:
+    type: json
+    content: |-
+      {
+        "name": "Milena",
+        "email": "milena@example.com",
+        "password": "strong-password",
+        "familyId": "family-main"
+      }
+response:
+  statusCode: 409
+  statusText: Conflict
+  body:
+    type: text
+    content: ""
+order: 3000

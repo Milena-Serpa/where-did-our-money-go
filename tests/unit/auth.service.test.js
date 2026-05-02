@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const path = require('node:path');
 
 const servicePath = path.resolve(__dirname, '../../src/services/auth.service.js');
+const databasePath = path.resolve(__dirname, '../../src/config/database.js');
 const envPath = path.resolve(__dirname, '../../src/config/env.js');
 const userPath = path.resolve(__dirname, '../../src/models/user.model.js');
 const bcryptPath = require.resolve('bcryptjs');
@@ -42,9 +43,15 @@ test('registerUser creates user with hashed password and returns token payload',
   let capturedJwtPayload;
   let capturedJwtSecret;
   let capturedJwtOptions;
+  let connectCalls = 0;
 
   const authService = withMockedModules(
     {
+      [databasePath]: {
+        connectDatabase: async () => {
+          connectCalls += 1;
+        }
+      },
       [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '2h' },
       [userPath]: {
         findOne: async () => null,
@@ -106,11 +113,19 @@ test('registerUser creates user with hashed password and returns token payload',
       familyId: 'fam-1'
     }
   });
+  assert.equal(connectCalls, 1);
 });
 
 test('registerUser fails when email already exists', async () => {
+  let connectCalls = 0;
+
   const authService = withMockedModules(
     {
+      [databasePath]: {
+        connectDatabase: async () => {
+          connectCalls += 1;
+        }
+      },
       [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '1d' },
       [userPath]: {
         findOne: async () => ({ id: 'existing' })
@@ -134,11 +149,19 @@ test('registerUser fails when email already exists', async () => {
       return true;
     }
   );
+  assert.equal(connectCalls, 1);
 });
 
 test('loginUser returns jwt when credentials are valid', async () => {
+  let connectCalls = 0;
+
   const authService = withMockedModules(
     {
+      [databasePath]: {
+        connectDatabase: async () => {
+          connectCalls += 1;
+        }
+      },
       [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '1d' },
       [userPath]: {
         findOne: async ({ email }) => ({
@@ -175,11 +198,19 @@ test('loginUser returns jwt when credentials are valid', async () => {
     email: 'joao@example.com',
     familyId: 'fam-2'
   });
+  assert.equal(connectCalls, 1);
 });
 
 test('loginUser rejects invalid credentials', async () => {
+  let connectCalls = 0;
+
   const authService = withMockedModules(
     {
+      [databasePath]: {
+        connectDatabase: async () => {
+          connectCalls += 1;
+        }
+      },
       [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '1d' },
       [userPath]: {
         findOne: async () => null
@@ -198,4 +229,5 @@ test('loginUser rejects invalid credentials', async () => {
       return true;
     }
   );
+  assert.equal(connectCalls, 1);
 });

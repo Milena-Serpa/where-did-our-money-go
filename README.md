@@ -79,3 +79,15 @@ http://localhost:3000/api-docs
 ## Notes For Deployment
 
 This project is prepared to evolve toward GitHub Actions CI and Vercel deployment. Environment variables should be configured in the deployment platform rather than committed to the repository.
+
+## Vercel Serverless Notes
+
+- In Vercel, API handlers run in serverless functions (cold/warm starts), not in a single long-lived Node process.
+- Auth operations (`/auth/register`, `/auth/login`) now force a MongoDB connection check before any `User.findOne` or `User.create`.
+- The database connector caches in-flight connections to avoid race conditions during cold starts and concurrent invocations.
+
+Required Vercel environment variables:
+
+- `MONGODB_URI`
+- `JWT_SECRET`
+- `JWT_EXPIRES_IN` (optional, defaults to `1d`)
