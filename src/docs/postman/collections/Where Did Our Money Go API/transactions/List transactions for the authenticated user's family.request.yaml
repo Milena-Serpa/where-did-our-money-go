@@ -1,0 +1,11 @@
+$kind: http-request
+url: "{{baseUrl}}/transactions"
+method: GET
+headers:
+  Accept: application/json
+auth:
+  type: bearer
+  credentials:
+    token: "{{bearerToken}}"
+examples: ./.resources/List transactions for the authenticated user's family.resources/examples
+order: 3000

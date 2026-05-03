@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Where Did Our Money Go API
-  version: 0.1.0
+  version: 0.2.0
   description: REST API for shared personal expense tracking.
 servers:
   - url: http://localhost:3000
@@ -9,6 +9,7 @@ servers:
 tags:
   - name: Health
   - name: Auth
+  - name: Transactions
 paths:
   /health:
     get:
@@ -66,6 +67,83 @@ paths:
           description: Missing required fields
         "401":
           description: Invalid credentials
+  /transactions:
+    get:
+      tags:
+        - Transactions
+      summary: List transactions for the authenticated user's family
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Transactions from the authenticated user's family
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Transaction"
+        "401":
+          description: Missing, invalid, or expired JWT
+    post:
+      tags:
+        - Transactions
+      summary: Create a transaction for the authenticated user's family
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateTransactionRequest"
+      responses:
+        "201":
+          description: Transaction created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Transaction"
+        "400":
+          description: Validation error
+        "401":
+          description: Missing, invalid, or expired JWT
+  /transactions/summary:
+    get:
+      tags:
+        - Transactions
+      summary: Summarize transaction totals by category for the authenticated user's family
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Totals grouped by category
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionSummary"
+        "401":
+          description: Missing, invalid, or expired JWT
+  /transactions/{id}:
+    delete:
+      tags:
+        - Transactions
+      summary: Delete a transaction from the authenticated user's family
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Transaction deleted
+        "401":
+          description: Missing, invalid, or expired JWT
+        "404":
+          description: Transaction not found in the user's family
 components:
   securitySchemes:
     bearerAuth:
@@ -142,3 +220,70 @@ components:
           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         user:
           $ref: "#/components/schemas/AuthUser"
+    Category:
+      type: string
+      enum:
+        - alimentação
+        - higiene
+        - limpeza
+        - lazer
+        - guloseimas
+        - bebidas
+        - transporte
+        - educação
+        - documentação
+        - outros
+      example: alimentação
+    CreateTransactionRequest:
+      type: object
+      required:
+        - title
+        - amount
+        - category
+      properties:
+        title:
+          type: string
+          example: Supermercado
+        amount:
+          type: number
+          minimum: 0.01
+          example: 42.9
+        category:
+          $ref: "#/components/schemas/Category"
+        date:
+          type: string
+          format: date-time
+          example: "2026-05-02T12:00:00.000Z"
+    Transaction:
+      type: object
+      properties:
+        id:
+          type: string
+          example: 66a000000000000000000002
+        title:
+          type: string
+          example: Supermercado
+        amount:
+          type: number
+          example: 42.9
+        category:
+          $ref: "#/components/schemas/Category"
+        date:
+          type: string
+          format: date-time
+          example: "2026-05-02T12:00:00.000Z"
+        userId:
+          type: string
+          example: 66a000000000000000000001
+        familyId:
+          type: string
+          example: family-main
+    TransactionSummary:
+      type: object
+      additionalProperties:
+        type: number
+      example:
+        alimentação: 500
+        transporte: 200
+        lazer: 150
+        outros: 100

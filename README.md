@@ -64,7 +64,28 @@ npm run dev
 - `GET /health`
 - `POST /auth/register`
 - `POST /auth/login`
+- `GET /transactions`
+- `POST /transactions`
+- `DELETE /transactions/:id`
+- `GET /transactions/summary`
 - `GET /api-docs`
+
+Protected routes require an `Authorization: Bearer <token>` header. The token is returned by the register and login endpoints.
+
+## Categories
+
+Transactions accept only these categories:
+
+- `alimentação`
+- `higiene`
+- `limpeza`
+- `lazer`
+- `guloseimas`
+- `bebidas`
+- `transporte`
+- `educação`
+- `documentação`
+- `outros`
 
 ## Swagger
 
