@@ -43,8 +43,16 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "400":
           description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "409":
           description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /auth/login:
     post:
       tags:
@@ -65,8 +73,16 @@ paths:
                 $ref: "#/components/schemas/AuthResponse"
         "400":
           description: Missing required fields
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /transactions:
     get:
       tags:
@@ -85,6 +101,10 @@ paths:
                   $ref: "#/components/schemas/Transaction"
         "401":
           description: Missing, invalid, or expired JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
     post:
       tags:
         - Transactions
@@ -106,8 +126,16 @@ paths:
                 $ref: "#/components/schemas/Transaction"
         "400":
           description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "401":
           description: Missing, invalid, or expired JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /transactions/summary:
     get:
       tags:
@@ -124,6 +152,10 @@ paths:
                 $ref: "#/components/schemas/TransactionSummary"
         "401":
           description: Missing, invalid, or expired JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
   /transactions/{id}:
     delete:
       tags:
@@ -142,8 +174,16 @@ paths:
           description: Transaction deleted
         "401":
           description: Missing, invalid, or expired JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "404":
           description: Transaction not found in the user's family
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
 components:
   securitySchemes:
     bearerAuth:
@@ -198,7 +238,7 @@ components:
           type: string
           format: password
           example: strong-password
-    AuthUser:
+    User:
       type: object
       properties:
         id:
@@ -221,7 +261,7 @@ components:
           type: string
           example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         user:
-          $ref: "#/components/schemas/AuthUser"
+          $ref: "#/components/schemas/User"
     Category:
       type: string
       enum:
@@ -289,3 +329,13 @@ components:
         transporte: 200
         lazer: 150
         outros: 100
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
+          example: Error message detail
+        errors:
+          type: object
+          nullable: true
+          description: Optional detailed validation errors
