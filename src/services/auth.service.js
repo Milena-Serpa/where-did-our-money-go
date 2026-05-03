@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 
+const { connectDatabase } = require('../config/database');
 const env = require('../config/env');
 const User = require('../models/user.model');
 
@@ -29,6 +30,8 @@ function buildAuthResponse(user) {
 }
 
 async function registerUser(payload) {
+  await connectDatabase();
+
   if (!env.jwtSecret) {
     const error = new Error('JWT_SECRET environment variable is required');
     error.statusCode = 500;
@@ -63,6 +66,8 @@ async function registerUser(payload) {
 }
 
 async function loginUser(payload) {
+  await connectDatabase();
+
   if (!env.jwtSecret) {
     const error = new Error('JWT_SECRET environment variable is required');
     error.statusCode = 500;
