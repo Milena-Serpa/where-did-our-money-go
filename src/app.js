@@ -1,3 +1,4 @@
+const path = require('path');
 const cors = require('cors');
 const express = require('express');
 const swaggerUi = require('swagger-ui-express');
@@ -8,7 +9,7 @@ const healthRoutes = require('./routes/health.routes');
 const transactionRoutes = require('./routes/transaction.routes');
 const { errorHandler, notFoundHandler } = require('./middlewares/error.middleware');
 
-const swaggerDocument = YAML.load('./src/docs/swagger.yaml');
+const swaggerDocument = YAML.load(path.join(__dirname, 'docs', 'swagger.yaml'));
 
 const app = express();
 
