@@ -152,6 +152,122 @@ test('registerUser fails when email already exists', async () => {
   assert.equal(connectCalls, 1);
 });
 
+test('registerUser assigns generated familyId when familyId is omitted', async () => {
+  let createdFamilyId;
+
+  const authService = withMockedModules(
+    {
+      [databasePath]: {
+        connectDatabase: async () => {}
+      },
+      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '2h' },
+      [userPath]: {
+        findOne: async () => null,
+        create: async (payload) => {
+          createdFamilyId = payload.familyId;
+          return {
+            id: 'u-new',
+            name: payload.name,
+            email: payload.email,
+            familyId: payload.familyId
+          };
+        }
+      },
+      [bcryptPath]: {
+        hash: async (password) => `hashed:${password}`
+      },
+      [jwtPath]: {
+        sign: () => 'signed-jwt'
+      }
+    },
+    () => require(servicePath)
+  );
+
+  const result = await authService.registerUser({
+    name: 'Solo',
+    email: 'solo@example.com',
+    password: 'secret'
+  });
+
+  assert.match(createdFamilyId, /^fam-[a-f0-9]{24}$/);
+  assert.equal(result.user.familyId, createdFamilyId);
+});
+
+test('registerUser normalizes provided familyId', async () => {
+  let createdFamilyId;
+
+  const authService = withMockedModules(
+    {
+      [databasePath]: {
+        connectDatabase: async () => {}
+      },
+      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '2h' },
+      [userPath]: {
+        findOne: async () => null,
+        create: async (payload) => {
+          createdFamilyId = payload.familyId;
+          return {
+            id: 'u-join',
+            name: payload.name,
+            email: payload.email,
+            familyId: payload.familyId
+          };
+        }
+      },
+      [bcryptPath]: {
+        hash: async (password) => `hashed:${password}`
+      },
+      [jwtPath]: {
+        sign: () => 'signed-jwt'
+      }
+    },
+    () => require(servicePath)
+  );
+
+  await authService.registerUser({
+    name: 'Member',
+    email: 'member@example.com',
+    password: 'secret',
+    familyId: '  Shared-Kitchen  '
+  });
+
+  assert.equal(createdFamilyId, 'shared-kitchen');
+});
+
+test('registerUser rejects invalid familyId slug', async () => {
+  const authService = withMockedModules(
+    {
+      [databasePath]: {
+        connectDatabase: async () => {}
+      },
+      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '1d' },
+      [userPath]: {
+        findOne: async () => null,
+        create: async () => {
+          throw new Error('create should not run');
+        }
+      },
+      [bcryptPath]: { hash: async () => 'ignored' },
+      [jwtPath]: { sign: () => 'ignored' }
+    },
+    () => require(servicePath)
+  );
+
+  await assert.rejects(
+    () => authService.registerUser({
+      name: 'Bad',
+      email: 'bad@example.com',
+      password: 'secret',
+      familyId: 'no'
+    }),
+    (error) => {
+      assert.equal(error.statusCode, 400);
+      assert.match(error.message, /familyId/);
+      return true;
+    }
+  );
+});
+
 test('loginUser returns jwt when credentials are valid', async () => {
   let connectCalls = 0;
 

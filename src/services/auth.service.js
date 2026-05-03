@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const { connectDatabase } = require('../config/database');
 const env = require('../config/env');
 const User = require('../models/user.model');
+const { resolveFamilyIdForRegistration } = require('../utils/familyId.util');
 
 function buildAuthResponse(user) {
   const token = jwt.sign(
@@ -38,13 +39,15 @@ async function registerUser(payload) {
     throw error;
   }
 
-  const { name, email, password, familyId } = payload;
+  const { name, email, password } = payload;
 
-  if (!name || !email || !password || !familyId) {
-    const error = new Error('name, email, password and familyId are required');
+  if (!name || !email || !password) {
+    const error = new Error('name, email and password are required');
     error.statusCode = 400;
     throw error;
   }
+
+  const familyId = resolveFamilyIdForRegistration(payload.familyId);
 
   const existingUser = await User.findOne({ email });
 
