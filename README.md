@@ -72,6 +72,14 @@ npm run dev
 
 Protected routes require an `Authorization: Bearer <token>` header. The token is returned by the register and login endpoints.
 
+## Family ID (`familyId`)
+
+Each user belongs to one family; transactions are scoped by the `familyId` embedded in the JWT.
+
+- **Registration**: `familyId` is optional. If you omit it or send an empty string, the API assigns a new id (format `fam-` plus 24 hex characters) and returns it with the user payload and token.
+- **Joining an existing family**: send a `familyId` chosen by your product (for example a code shared between members). It must be a **lowercase slug**: 3–50 characters, letters and digits only, with optional single hyphens between segments (no leading/trailing hyphen, no underscores or spaces). Values are stored normalized in lowercase.
+- **Login**: unchanged; `familyId` always comes from the stored user record.
+
 ## Categories
 
 Transactions accept only these categories:

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Where Did Our Money Go API
-  version: 0.2.0
+  version: 0.3.0
   description: REST API for shared personal expense tracking.
 servers:
   - url: http://localhost:3000
@@ -166,7 +166,6 @@ components:
         - name
         - email
         - password
-        - familyId
       properties:
         name:
           type: string
@@ -181,6 +180,9 @@ components:
           example: strong-password
         familyId:
           type: string
+          description: >
+            Optional. Lowercase slug (3–50 chars, letters, digits, hyphens between segments).
+            Omit or send empty to create a new family; the API returns the assigned id in the response and JWT.
           example: family-main
     LoginRequest:
       type: object
