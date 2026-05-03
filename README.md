@@ -105,9 +105,29 @@ When the API is running, Swagger UI is available at:
 http://localhost:3000/api-docs
 ```
 
-## Notes For Deployment
+## Testing
 
-This project is prepared to evolve toward GitHub Actions CI and Vercel deployment. Environment variables should be configured in the deployment platform rather than committed to the repository.
+The project uses [Jest](https://jestjs.io/) for unit and integration testing, and [Supertest](https://github.com/ladjs/supertest) for API testing.
+
+To run all tests:
+
+```bash
+npm test
+```
+
+For development mode (watch):
+
+```bash
+npm run test:watch
+```
+
+For coverage report:
+
+```bash
+npm run test:coverage
+```
+
+API integration tests use [mongodb-memory-server](https://github.com/nodkz/mongodb-memory-server) to run a temporary in-memory MongoDB instance, ensuring tests are isolated and don't require a running database.
 
 ## Vercel Serverless Notes
 

@@ -1,349 +1,164 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('node:path');
+const authService = require('../../src/services/auth.service');
+const User = require('../../src/models/user.model');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
+const { connectDatabase } = require('../../src/config/database');
+const env = require('../../src/config/env');
 
-const servicePath = path.resolve(__dirname, '../../src/services/auth.service.js');
-const databasePath = path.resolve(__dirname, '../../src/config/database.js');
-const envPath = path.resolve(__dirname, '../../src/config/env.js');
-const userPath = path.resolve(__dirname, '../../src/models/user.model.js');
-const bcryptPath = require.resolve('bcryptjs');
-const jwtPath = require.resolve('jsonwebtoken');
+jest.mock('../../src/models/user.model');
+jest.mock('bcryptjs');
+jest.mock('jsonwebtoken');
+jest.mock('../../src/config/database');
+jest.mock('../../src/config/env', () => ({
+  jwtSecret: 'test-secret',
+  jwtExpiresIn: '1d'
+}));
 
-function withMockedModules(mocks, loadModule) {
-  const savedCache = new Map();
-
-  for (const [modulePath, moduleExports] of Object.entries(mocks)) {
-    savedCache.set(modulePath, require.cache[modulePath]);
-    require.cache[modulePath] = {
-      id: modulePath,
-      filename: modulePath,
-      loaded: true,
-      exports: moduleExports
-    };
-  }
-
-  delete require.cache[servicePath];
-
-  try {
-    return loadModule();
-  } finally {
-    delete require.cache[servicePath];
-    for (const [modulePath, previousEntry] of savedCache.entries()) {
-      if (previousEntry) {
-        require.cache[modulePath] = previousEntry;
-      } else {
-        delete require.cache[modulePath];
-      }
-    }
-  }
-}
-
-test('registerUser creates user with hashed password and returns token payload', async () => {
-  let capturedCreatedPayload;
-  let capturedJwtPayload;
-  let capturedJwtSecret;
-  let capturedJwtOptions;
-  let connectCalls = 0;
-
-  const authService = withMockedModules(
-    {
-      [databasePath]: {
-        connectDatabase: async () => {
-          connectCalls += 1;
-        }
-      },
-      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '2h' },
-      [userPath]: {
-        findOne: async () => null,
-        create: async (payload) => {
-          capturedCreatedPayload = payload;
-          return {
-            id: 'u1',
-            name: payload.name,
-            email: payload.email,
-            familyId: payload.familyId
-          };
-        }
-      },
-      [bcryptPath]: {
-        hash: async (password, rounds) => {
-          assert.equal(password, 'raw-password');
-          assert.equal(rounds, 10);
-          return 'hashed-password';
-        }
-      },
-      [jwtPath]: {
-        sign: (payload, secret, options) => {
-          capturedJwtPayload = payload;
-          capturedJwtSecret = secret;
-          capturedJwtOptions = options;
-          return 'signed-jwt';
-        }
-      }
-    },
-    () => require(servicePath)
-  );
-
-  const result = await authService.registerUser({
-    name: 'Milena',
-    email: 'milena@example.com',
-    password: 'raw-password',
-    familyId: 'fam-1'
+describe('Auth Service', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
   });
 
-  assert.deepEqual(capturedCreatedPayload, {
-    name: 'Milena',
-    email: 'milena@example.com',
-    password: 'hashed-password',
-    familyId: 'fam-1'
-  });
-  assert.deepEqual(capturedJwtPayload, {
-    id: 'u1',
-    email: 'milena@example.com',
-    familyId: 'fam-1'
-  });
-  assert.equal(capturedJwtSecret, 'test-secret');
-  assert.deepEqual(capturedJwtOptions, { expiresIn: '2h' });
-  assert.deepEqual(result, {
-    token: 'signed-jwt',
-    user: {
-      id: 'u1',
-      name: 'Milena',
-      email: 'milena@example.com',
-      familyId: 'fam-1'
-    }
-  });
-  assert.equal(connectCalls, 1);
-});
+  describe('registerUser', () => {
+    it('should create user with hashed password and return token payload', async () => {
+      User.findOne.mockResolvedValue(null);
+      User.create.mockResolvedValue({
+        id: 'u1',
+        name: 'Milena',
+        email: 'milena@example.com',
+        familyId: 'fam-1'
+      });
+      bcrypt.hash.mockResolvedValue('hashed-password');
+      jwt.sign.mockReturnValue('signed-jwt');
 
-test('registerUser fails when email already exists', async () => {
-  let connectCalls = 0;
+      const result = await authService.registerUser({
+        name: 'Milena',
+        email: 'milena@example.com',
+        password: 'raw-password',
+        familyId: 'fam-1'
+      });
 
-  const authService = withMockedModules(
-    {
-      [databasePath]: {
-        connectDatabase: async () => {
-          connectCalls += 1;
+      expect(connectDatabase).toHaveBeenCalled();
+      expect(bcrypt.hash).toHaveBeenCalledWith('raw-password', 10);
+      expect(User.create).toHaveBeenCalledWith({
+        name: 'Milena',
+        email: 'milena@example.com',
+        password: 'hashed-password',
+        familyId: 'fam-1'
+      });
+      expect(jwt.sign).toHaveBeenCalledWith(
+        { id: 'u1', email: 'milena@example.com', familyId: 'fam-1' },
+        'test-secret',
+        { expiresIn: '1d' }
+      );
+      expect(result).toEqual({
+        token: 'signed-jwt',
+        user: {
+          id: 'u1',
+          name: 'Milena',
+          email: 'milena@example.com',
+          familyId: 'fam-1'
         }
-      },
-      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '1d' },
-      [userPath]: {
-        findOne: async () => ({ id: 'existing' })
-      },
-      [bcryptPath]: { hash: async () => 'ignored' },
-      [jwtPath]: { sign: () => 'ignored' }
-    },
-    () => require(servicePath)
-  );
+      });
+    });
 
-  await assert.rejects(
-    () => authService.registerUser({
-      name: 'User',
-      email: 'already@used.com',
-      password: '123',
-      familyId: 'fam-1'
-    }),
-    (error) => {
-      assert.equal(error.message, 'Email is already registered');
-      assert.equal(error.statusCode, 409);
-      return true;
-    }
-  );
-  assert.equal(connectCalls, 1);
-});
+    it('should fail when email already exists', async () => {
+      User.findOne.mockResolvedValue({ id: 'existing' });
 
-test('registerUser assigns generated familyId when familyId is omitted', async () => {
-  let createdFamilyId;
+      await expect(authService.registerUser({
+        name: 'User',
+        email: 'already@used.com',
+        password: '123',
+        familyId: 'fam-1'
+      })).rejects.toMatchObject({
+        message: 'Email is already registered',
+        statusCode: 409
+      });
+    });
 
-  const authService = withMockedModules(
-    {
-      [databasePath]: {
-        connectDatabase: async () => {}
-      },
-      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '2h' },
-      [userPath]: {
-        findOne: async () => null,
-        create: async (payload) => {
-          createdFamilyId = payload.familyId;
-          return {
-            id: 'u-new',
-            name: payload.name,
-            email: payload.email,
-            familyId: payload.familyId
-          };
-        }
-      },
-      [bcryptPath]: {
-        hash: async (password) => `hashed:${password}`
-      },
-      [jwtPath]: {
-        sign: () => 'signed-jwt'
-      }
-    },
-    () => require(servicePath)
-  );
+    it('should assign generated familyId when familyId is omitted', async () => {
+      User.findOne.mockResolvedValue(null);
+      User.create.mockImplementation((payload) => Promise.resolve({
+        id: 'u-new',
+        ...payload
+      }));
+      bcrypt.hash.mockResolvedValue('hashed');
+      jwt.sign.mockReturnValue('token');
 
-  const result = await authService.registerUser({
-    name: 'Solo',
-    email: 'solo@example.com',
-    password: 'secret'
-  });
+      const result = await authService.registerUser({
+        name: 'Solo',
+        email: 'solo@example.com',
+        password: 'secret'
+      });
 
-  assert.match(createdFamilyId, /^fam-[a-f0-9]{24}$/);
-  assert.equal(result.user.familyId, createdFamilyId);
-});
+      expect(result.user.familyId).toMatch(/^fam-[a-f0-9]{24}$/);
+    });
 
-test('registerUser normalizes provided familyId', async () => {
-  let createdFamilyId;
+    it('should normalize provided familyId', async () => {
+      User.findOne.mockResolvedValue(null);
+      User.create.mockImplementation((payload) => Promise.resolve({
+        id: 'u-join',
+        ...payload
+      }));
+      bcrypt.hash.mockResolvedValue('hashed');
+      jwt.sign.mockReturnValue('token');
 
-  const authService = withMockedModules(
-    {
-      [databasePath]: {
-        connectDatabase: async () => {}
-      },
-      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '2h' },
-      [userPath]: {
-        findOne: async () => null,
-        create: async (payload) => {
-          createdFamilyId = payload.familyId;
-          return {
-            id: 'u-join',
-            name: payload.name,
-            email: payload.email,
-            familyId: payload.familyId
-          };
-        }
-      },
-      [bcryptPath]: {
-        hash: async (password) => `hashed:${password}`
-      },
-      [jwtPath]: {
-        sign: () => 'signed-jwt'
-      }
-    },
-    () => require(servicePath)
-  );
+      await authService.registerUser({
+        name: 'Member',
+        email: 'member@example.com',
+        password: 'secret',
+        familyId: '  Shared-Kitchen  '
+      });
 
-  await authService.registerUser({
-    name: 'Member',
-    email: 'member@example.com',
-    password: 'secret',
-    familyId: '  Shared-Kitchen  '
+      expect(User.create).toHaveBeenCalledWith(expect.objectContaining({
+        familyId: 'shared-kitchen'
+      }));
+    });
+
+    it('should reject invalid familyId slug', async () => {
+      await expect(authService.registerUser({
+        name: 'Bad',
+        email: 'bad@example.com',
+        password: 'secret',
+        familyId: 'no'
+      })).rejects.toMatchObject({
+        statusCode: 400
+      });
+    });
   });
 
-  assert.equal(createdFamilyId, 'shared-kitchen');
-});
+  describe('loginUser', () => {
+    it('should return jwt when credentials are valid', async () => {
+      User.findOne.mockResolvedValue({
+        id: 'u2',
+        name: 'Joao',
+        email: 'joao@example.com',
+        familyId: 'fam-2',
+        password: 'stored-hash'
+      });
+      bcrypt.compare.mockResolvedValue(true);
+      jwt.sign.mockReturnValue('valid-jwt');
 
-test('registerUser rejects invalid familyId slug', async () => {
-  const authService = withMockedModules(
-    {
-      [databasePath]: {
-        connectDatabase: async () => {}
-      },
-      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '1d' },
-      [userPath]: {
-        findOne: async () => null,
-        create: async () => {
-          throw new Error('create should not run');
-        }
-      },
-      [bcryptPath]: { hash: async () => 'ignored' },
-      [jwtPath]: { sign: () => 'ignored' }
-    },
-    () => require(servicePath)
-  );
+      const result = await authService.loginUser({
+        email: 'joao@example.com',
+        password: 'right-password'
+      });
 
-  await assert.rejects(
-    () => authService.registerUser({
-      name: 'Bad',
-      email: 'bad@example.com',
-      password: 'secret',
-      familyId: 'no'
-    }),
-    (error) => {
-      assert.equal(error.statusCode, 400);
-      assert.match(error.message, /familyId/);
-      return true;
-    }
-  );
-});
+      expect(bcrypt.compare).toHaveBeenCalledWith('right-password', 'stored-hash');
+      expect(result.token).toBe('valid-jwt');
+      expect(result.user.email).toBe('joao@example.com');
+    });
 
-test('loginUser returns jwt when credentials are valid', async () => {
-  let connectCalls = 0;
+    it('should reject invalid credentials', async () => {
+      User.findOne.mockResolvedValue(null);
 
-  const authService = withMockedModules(
-    {
-      [databasePath]: {
-        connectDatabase: async () => {
-          connectCalls += 1;
-        }
-      },
-      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '1d' },
-      [userPath]: {
-        findOne: async ({ email }) => ({
-          id: 'u2',
-          name: 'Joao',
-          email,
-          familyId: 'fam-2',
-          password: 'stored-hash'
-        })
-      },
-      [bcryptPath]: {
-        compare: async (provided, stored) => {
-          assert.equal(provided, 'right-password');
-          assert.equal(stored, 'stored-hash');
-          return true;
-        }
-      },
-      [jwtPath]: {
-        sign: () => 'valid-jwt'
-      }
-    },
-    () => require(servicePath)
-  );
-
-  const result = await authService.loginUser({
-    email: 'joao@example.com',
-    password: 'right-password'
+      await expect(authService.loginUser({
+        email: 'none@example.com',
+        password: 'x'
+      })).rejects.toMatchObject({
+        message: 'Invalid credentials',
+        statusCode: 401
+      });
+    });
   });
-
-  assert.equal(result.token, 'valid-jwt');
-  assert.deepEqual(result.user, {
-    id: 'u2',
-    name: 'Joao',
-    email: 'joao@example.com',
-    familyId: 'fam-2'
-  });
-  assert.equal(connectCalls, 1);
-});
-
-test('loginUser rejects invalid credentials', async () => {
-  let connectCalls = 0;
-
-  const authService = withMockedModules(
-    {
-      [databasePath]: {
-        connectDatabase: async () => {
-          connectCalls += 1;
-        }
-      },
-      [envPath]: { jwtSecret: 'test-secret', jwtExpiresIn: '1d' },
-      [userPath]: {
-        findOne: async () => null
-      },
-      [bcryptPath]: { compare: async () => false },
-      [jwtPath]: { sign: () => 'ignored' }
-    },
-    () => require(servicePath)
-  );
-
-  await assert.rejects(
-    () => authService.loginUser({ email: 'none@example.com', password: 'x' }),
-    (error) => {
-      assert.equal(error.message, 'Invalid credentials');
-      assert.equal(error.statusCode, 401);
-      return true;
-    }
-  );
-  assert.equal(connectCalls, 1);
 });

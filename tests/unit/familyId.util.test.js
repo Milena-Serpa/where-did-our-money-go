@@ -1,6 +1,3 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-
 const {
   MIN_LEN,
   MAX_LEN,
@@ -9,76 +6,62 @@ const {
   resolveFamilyIdForRegistration
 } = require('../../src/utils/familyId.util');
 
-test('generateFamilyId returns fam- prefix and 24 hex chars', () => {
-  const id = generateFamilyId();
-  assert.match(id, /^fam-[a-f0-9]{24}$/);
-});
+describe('FamilyId Util', () => {
+  it('should generate familyId with fam- prefix and 24 hex chars', () => {
+    const id = generateFamilyId();
+    expect(id).toMatch(/^fam-[a-f0-9]{24}$/);
+  });
 
-test('validateUserProvidedFamilyId normalizes to lowercase slug', () => {
-  assert.equal(validateUserProvidedFamilyId('  Family-Main  '), 'family-main');
-});
+  describe('validateUserProvidedFamilyId', () => {
+    it('should normalize to lowercase slug', () => {
+      expect(validateUserProvidedFamilyId('  Family-Main  ')).toBe('family-main');
+    });
 
-test('validateUserProvidedFamilyId accepts minimum length slug', () => {
-  assert.equal(validateUserProvidedFamilyId('abc'), 'abc');
-});
+    it('should accept minimum length slug', () => {
+      expect(validateUserProvidedFamilyId('abc')).toBe('abc');
+    });
 
-test('validateUserProvidedFamilyId rejects slug shorter than minimum', () => {
-  assert.throws(
-    () => validateUserProvidedFamilyId('ab'),
-    (error) => {
-      assert.equal(error.statusCode, 400);
-      assert.match(error.message, new RegExp(String.raw`${MIN_LEN}`));
-      return true;
-    }
-  );
-});
+    it('should reject slug shorter than minimum', () => {
+      expect(() => validateUserProvidedFamilyId('ab')).toThrow(expect.objectContaining({
+        statusCode: 400
+      }));
+    });
 
-test('validateUserProvidedFamilyId rejects slug longer than maximum', () => {
-  const tooLong = 'a'.repeat(MAX_LEN + 1);
-  assert.throws(
-    () => validateUserProvidedFamilyId(tooLong),
-    (error) => {
-      assert.equal(error.statusCode, 400);
-      return true;
-    }
-  );
-});
+    it('should reject slug longer than maximum', () => {
+      const tooLong = 'a'.repeat(MAX_LEN + 1);
+      expect(() => validateUserProvidedFamilyId(tooLong)).toThrow(expect.objectContaining({
+        statusCode: 400
+      }));
+    });
 
-test('validateUserProvidedFamilyId rejects underscores and spaces', () => {
-  assert.throws(
-    () => validateUserProvidedFamilyId('family_main'),
-    (error) => {
-      assert.equal(error.statusCode, 400);
-      return true;
-    }
-  );
-});
+    it('should reject underscores and spaces', () => {
+      expect(() => validateUserProvidedFamilyId('family_main')).toThrow(expect.objectContaining({
+        statusCode: 400
+      }));
+    });
 
-test('validateUserProvidedFamilyId rejects double hyphen segments', () => {
-  assert.throws(
-    () => validateUserProvidedFamilyId('fam--ily'),
-    (error) => {
-      assert.equal(error.statusCode, 400);
-      return true;
-    }
-  );
-});
+    it('should reject double hyphen segments', () => {
+      expect(() => validateUserProvidedFamilyId('fam--ily')).toThrow(expect.objectContaining({
+        statusCode: 400
+      }));
+    });
+  });
 
-test('resolveFamilyIdForRegistration generates when input is undefined', () => {
-  const id = resolveFamilyIdForRegistration(undefined);
-  assert.match(id, /^fam-[a-f0-9]{24}$/);
-});
+  describe('resolveFamilyIdForRegistration', () => {
+    it('should generate when input is undefined', () => {
+      expect(resolveFamilyIdForRegistration(undefined)).toMatch(/^fam-[a-f0-9]{24}$/);
+    });
 
-test('resolveFamilyIdForRegistration generates when input is null', () => {
-  const id = resolveFamilyIdForRegistration(null);
-  assert.match(id, /^fam-[a-f0-9]{24}$/);
-});
+    it('should generate when input is null', () => {
+      expect(resolveFamilyIdForRegistration(null)).toMatch(/^fam-[a-f0-9]{24}$/);
+    });
 
-test('resolveFamilyIdForRegistration generates when input is blank string', () => {
-  const id = resolveFamilyIdForRegistration('   ');
-  assert.match(id, /^fam-[a-f0-9]{24}$/);
-});
+    it('should generate when input is blank string', () => {
+      expect(resolveFamilyIdForRegistration('   ')).toMatch(/^fam-[a-f0-9]{24}$/);
+    });
 
-test('resolveFamilyIdForRegistration validates when input is non-empty', () => {
-  assert.equal(resolveFamilyIdForRegistration('Shared-Home'), 'shared-home');
+    it('should validate when input is non-empty', () => {
+      expect(resolveFamilyIdForRegistration('Shared-Home')).toBe('shared-home');
+    });
+  });
 });

@@ -1,104 +1,54 @@
-const test = require('node:test');
-const assert = require('node:assert/strict');
-const path = require('node:path');
+const { authenticate } = require('../../src/middlewares/auth.middleware');
+const jwt = require('jsonwebtoken');
+const env = require('../../src/config/env');
 
-const middlewarePath = path.resolve(__dirname, '../../src/middlewares/auth.middleware.js');
-const envPath = path.resolve(__dirname, '../../src/config/env.js');
-const jwtPath = require.resolve('jsonwebtoken');
+jest.mock('jsonwebtoken');
+jest.mock('../../src/config/env', () => ({
+  jwtSecret: 'test-secret'
+}));
 
-function loadAuthenticateWithMocks({ envMock, jwtMock }) {
-  const savedEnv = require.cache[envPath];
-  const savedJwt = require.cache[jwtPath];
+describe('Auth Middleware', () => {
+  let req, res, next;
 
-  require.cache[envPath] = {
-    id: envPath,
-    filename: envPath,
-    loaded: true,
-    exports: envMock
-  };
-  require.cache[jwtPath] = {
-    id: jwtPath,
-    filename: jwtPath,
-    loaded: true,
-    exports: jwtMock
-  };
-
-  delete require.cache[middlewarePath];
-
-  try {
-    return require(middlewarePath).authenticate;
-  } finally {
-    delete require.cache[middlewarePath];
-    if (savedEnv) {
-      require.cache[envPath] = savedEnv;
-    } else {
-      delete require.cache[envPath];
-    }
-    if (savedJwt) {
-      require.cache[jwtPath] = savedJwt;
-    } else {
-      delete require.cache[jwtPath];
-    }
-  }
-}
-
-test('authenticate returns 401 when authorization header is missing', () => {
-  const authenticate = loadAuthenticateWithMocks({
-    envMock: { jwtSecret: 'test-secret' },
-    jwtMock: { verify: () => ({ id: 'u1' }) }
+  beforeEach(() => {
+    req = { headers: {} };
+    res = {};
+    next = jest.fn();
+    jest.clearAllMocks();
   });
 
-  const req = { headers: {} };
-  let capturedError;
+  it('should return 401 when authorization header is missing', () => {
+    authenticate(req, res, next);
 
-  authenticate(req, null, (error) => {
-    capturedError = error;
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({
+      message: 'Authentication token is required',
+      statusCode: 401
+    }));
   });
 
-  assert.equal(capturedError.message, 'Authentication token is required');
-  assert.equal(capturedError.statusCode, 401);
-});
+  it('should attach decoded user when token is valid', () => {
+    req.headers.authorization = 'Bearer valid-token';
+    const decodedUser = { id: 'u1', familyId: 'fam-1' };
+    jwt.verify.mockReturnValue(decodedUser);
 
-test('authenticate attaches decoded user when token is valid', () => {
-  const authenticate = loadAuthenticateWithMocks({
-    envMock: { jwtSecret: 'test-secret' },
-    jwtMock: {
-      verify: (token, secret) => {
-        assert.equal(token, 'valid-token');
-        assert.equal(secret, 'test-secret');
-        return { id: 'u1', familyId: 'fam-1' };
-      }
-    }
+    authenticate(req, res, next);
+
+    expect(jwt.verify).toHaveBeenCalledWith('valid-token', 'test-secret');
+    expect(req.user).toEqual(decodedUser);
+    expect(next).toHaveBeenCalledWith();
   });
 
-  const req = { headers: { authorization: 'Bearer valid-token' } };
-  let nextCalledWithoutError = false;
+  it('should return 401 when token is invalid', () => {
+    req.headers.authorization = 'Bearer invalid-token';
+    jwt.verify.mockImplementation(() => {
+      throw new Error('bad token');
+    });
 
-  authenticate(req, null, (error) => {
-    nextCalledWithoutError = !error;
+    authenticate(req, res, next);
+
+    expect(next).toHaveBeenCalledWith(expect.objectContaining({
+      message: 'Invalid or expired authentication token',
+      statusCode: 401
+    }));
   });
-
-  assert.equal(nextCalledWithoutError, true);
-  assert.deepEqual(req.user, { id: 'u1', familyId: 'fam-1' });
-});
-
-test('authenticate returns 401 when token is invalid', () => {
-  const authenticate = loadAuthenticateWithMocks({
-    envMock: { jwtSecret: 'test-secret' },
-    jwtMock: {
-      verify: () => {
-        throw new Error('bad token');
-      }
-    }
-  });
-
-  const req = { headers: { authorization: 'Bearer invalid-token' } };
-  let capturedError;
-
-  authenticate(req, null, (error) => {
-    capturedError = error;
-  });
-
-  assert.equal(capturedError.message, 'Invalid or expired authentication token');
-  assert.equal(capturedError.statusCode, 401);
 });
